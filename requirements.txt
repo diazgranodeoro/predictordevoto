@@ -1,0 +1,23 @@
+# Core dependencies
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0,<2.2.0
+pyreadstat>=1.2.0
+
+# Machine Learning
+pycaret>=3.3.0
+scikit-learn>=1.3.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.13.0
+plotly>=5.14.0
+
+# Web Application
+streamlit>=1.50.0
+
+# Notebook environment
+jupyter>=1.0.0
+ipykernel>=6.20.0
+
+# IMPORTANT: Python 3.9, 3.10, or 3.11 required for PyCaret
+# Python 3.12+ is NOT compatible with PyCaret
