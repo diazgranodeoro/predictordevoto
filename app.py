@@ -96,42 +96,6 @@ def cargar_datos():
         st.error(f"❌ Error al cargar datos: {e}")
         return None
 
-# Cargar datos originales para EDA
-@st.cache_data
-def cargar_datos_eda():
-    """Carga datos originales sin one-hot encoding para análisis exploratorio"""
-    try:
-        import pyreadstat
-        # Cargar todos los archivos .sav
-        archivos = ['enero.sav', 'febrero.sav', 'marzo.sav', 'abril.sav', 'mayo.sav', 
-                   'junio.sav', 'julio.sav', 'septiembre.sav', 'octubre.sav', 'noviembre.sav', 'diciembre.sav']
-        
-        dfs = []
-        for archivo in archivos:
-            try:
-                df_temp, meta = pyreadstat.read_sav(f'data/{archivo}')
-                dfs.append(df_temp)
-            except:
-                pass
-        
-        if not dfs:
-            return None
-        
-        df_completo = pd.concat(dfs, ignore_index=True)
-        
-        # Renombrar columna de voto
-        if 'VOTOSIMG' in df_completo.columns:
-            df_completo = df_completo.rename(columns={'VOTOSIMG': 'VOTO'})
-        
-        # Filtrar solo los 4 partidos principales
-        if 'VOTO' in df_completo.columns:
-            df_completo = df_completo[df_completo['VOTO'].isin(['PP', 'PSOE', 'Sumar', 'VOX'])]
-        
-        return df_completo
-    except Exception as e:
-        # Si falla, retornar None
-        return None
-
 # Cargar el modelo
 @st.cache_resource
 def cargar_modelo():
@@ -195,7 +159,6 @@ def crear_dataframe_prediccion(grupo_edad, sexo, ccaa, tamuni, escideol, estudio
 
 modelo = cargar_modelo()
 df_datos = cargar_datos()
-df_datos_eda = cargar_datos_eda()  # Datos originales para EDA
 
 if modelo is not None:
     # Crear pestañas

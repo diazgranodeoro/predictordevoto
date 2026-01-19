@@ -41,6 +41,9 @@ logs/
 # models/*.pkl
 # models/*.joblib
 
+# Data files (archivos .sav son muy grandes)
+data/*.sav
+
 # VS Code
 .vscode/
 *.code-workspace
