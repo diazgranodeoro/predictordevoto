@@ -78,10 +78,6 @@ predictordevoto/
 **Ejecutar la app Streamlit:**
 
 ```bash
-# Opción 1: Usar el script batch (ejecuta con Python 3.11)
-.\run_app.bat
-
-# Opción 2: Comando directo
 py -3.11 -m streamlit run app.py
 ```
 
@@ -173,7 +169,6 @@ El notebook `predictorvoto.ipynb` genera:
 - [ ] Implementar modelos ensemble más sofisticados (stacking, blending)
 - [ ] Probar redes neuronales para captar interacciones complejas
 - [ ] Análisis de subgrupos (jóvenes urbanos, pensionistas rurales, etc.)
-- [ ] Desplegar la app en la nube (Streamlit Cloud, Azure, AWS)
 
 ## 📚 Referencias
 

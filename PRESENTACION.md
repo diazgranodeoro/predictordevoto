@@ -97,9 +97,8 @@ Desarrollar un modelo de Machine Learning capaz de **predecir la intención de v
                         ↓
 ┌─────────────────────────────────────────────────────────┐
 │ 7. DEPLOYMENT                                           │
-│    ▸ Exportación del modelo (.pkl)                     │
-│    ▸ Aplicación web Streamlit (app.py)                │
-│    ▸ Interfaz con 3 pestañas interactivas             │
+│    ▸ Aplicación web Streamlit (app.py)                  │
+│    ▸ Interfaz con dos pestañas interactivas             │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -181,16 +180,9 @@ La aplicación web (`app.py`) ofrece tres modos de uso interactivos:
 - **Gráficos interactivos** con Plotly
 - **Tabla de resultados detallados**
 
-#### Pestaña 3: ⚖️ Comparar Perfiles
-- **Comparación de 2-5 perfiles** simultáneamente
-- **Visualización lado a lado**
-- **Tabla comparativa** con probabilidades
-Opción 1: Aplicación Web (Recomendado)
-```bash
-# Ejecutar con Python 3.11
-.\run_app.bat
 
-# O manualmente
+### Opción 1: Aplicación Web (Recomendado)
+```
 py -3.11 -m streamlit run app.py
 ```
 
@@ -221,7 +213,7 @@ nuevo_votante = pd.DataFrame({
     'TAMUNI_>100.000': [1],       # Municipio grande
     'PARTICIPACIONG_Sí': [1],     # Participó en elecciones previas
     # Resto de columnas en 0 (ver notebook para lista completa)n lugar de 70/30
-4. ✅ **Aplicación web:** Streamlit con 3 pestañas interactivas
+4. ✅ **Aplicación web:** Streamlit con dos pestañas interactivas
 5. ✅ **Visualizaciones:** Colores corporativos de partidos
 6. ✅ **Compatibilidad Python:** Script para ejecutar con Python 3.11
 

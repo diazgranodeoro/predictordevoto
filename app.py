@@ -6,11 +6,9 @@ Basado en datos del CIS (Centro de Investigaciones Sociológicas)
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 from pycaret.classification import load_model, predict_model
 import plotly.express as px
 import plotly.graph_objects as go
-import os
 
 # Configuración de la página
 st.set_page_config(
@@ -53,6 +51,24 @@ st.markdown("""
         [data-baseweb="select"] > div {
             background-color: #FFFFFF !important;
         }
+        /* Expander - fondo oscuro visible */
+        [data-testid="stExpander"] {
+            background-color: #262730 !important;
+            border: 1px solid #4F4F4F !important;
+        }
+        [data-testid="stExpander"] > div:first-child {
+            background-color: #262730 !important;
+        }
+        [data-testid="stExpander"] [data-testid="stMarkdownContainer"] {
+            color: #FAFAFA !important;
+        }
+        .streamlit-expanderHeader {
+            background-color: #262730 !important;
+            color: #FAFAFA !important;
+        }
+        .streamlit-expanderContent {
+            background-color: #262730 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -62,13 +78,59 @@ st.markdown("### Predice la intención de voto basada en variables sociodemográ
 st.markdown("---")
 
 # Colores de los partidos políticos
-# Colores oficiales de los 4 partidos principales
 COLORES_PARTIDOS = {
     'PP': '#1e4a90',      # Azul PP
     'PSOE': '#FF0000',    # Rojo PSOE
     'Sumar': '#E61455',   # Magenta Sumar
     'VOX': '#73B446'      # Verde VOX
 }
+
+# Cargar datos limpios
+@st.cache_data
+def cargar_datos():
+    """Carga el dataset procesado para análisis (one-hot encoded)"""
+    try:
+        df = pd.read_csv('data/datos_limpios.csv')
+        return df
+    except Exception as e:
+        st.error(f"❌ Error al cargar datos: {e}")
+        return None
+
+# Cargar datos originales para EDA
+@st.cache_data
+def cargar_datos_eda():
+    """Carga datos originales sin one-hot encoding para análisis exploratorio"""
+    try:
+        import pyreadstat
+        # Cargar todos los archivos .sav
+        archivos = ['enero.sav', 'febrero.sav', 'marzo.sav', 'abril.sav', 'mayo.sav', 
+                   'junio.sav', 'julio.sav', 'septiembre.sav', 'octubre.sav', 'noviembre.sav', 'diciembre.sav']
+        
+        dfs = []
+        for archivo in archivos:
+            try:
+                df_temp, meta = pyreadstat.read_sav(f'data/{archivo}')
+                dfs.append(df_temp)
+            except:
+                pass
+        
+        if not dfs:
+            return None
+        
+        df_completo = pd.concat(dfs, ignore_index=True)
+        
+        # Renombrar columna de voto
+        if 'VOTOSIMG' in df_completo.columns:
+            df_completo = df_completo.rename(columns={'VOTOSIMG': 'VOTO'})
+        
+        # Filtrar solo los 4 partidos principales
+        if 'VOTO' in df_completo.columns:
+            df_completo = df_completo[df_completo['VOTO'].isin(['PP', 'PSOE', 'Sumar', 'VOX'])]
+        
+        return df_completo
+    except Exception as e:
+        # Si falla, retornar None
+        return None
 
 # Cargar el modelo
 @st.cache_resource
@@ -132,10 +194,12 @@ def crear_dataframe_prediccion(grupo_edad, sexo, ccaa, tamuni, escideol, estudio
     })
 
 modelo = cargar_modelo()
+df_datos = cargar_datos()
+df_datos_eda = cargar_datos_eda()  # Datos originales para EDA
 
 if modelo is not None:
     # Crear pestañas
-    tab1, tab2, tab3 = st.tabs(["🔮 Predicción Individual", "📊 Análisis de Probabilidades", "⚖️ Comparar Perfiles"])
+    tab1, tab2 = st.tabs(["🔮 Predicción Individual", "📊 Análisis de Probabilidades"])
     
     # ============================================================================
     # PESTAÑA 1: PREDICCIÓN INDIVIDUAL
@@ -151,7 +215,7 @@ if modelo is not None:
             grupo_edad = st.selectbox(
                 "Grupo de edad",
                 options=['18-29', '30-39', '40-49', '50-59', '60-69', '70+'],
-                index=1,  # Default: 30-39
+                index=1,
                 key="grupo_edad_tab1"
             )
             
@@ -210,18 +274,14 @@ if modelo is not None:
         
         # Botón de predicción
         if st.button("🔮 Predecir Voto", type="primary", use_container_width=True):
-            # Crear el dataframe con los valores ingresados
             nuevo_dato = crear_dataframe_prediccion(grupo_edad, sexo, ccaa, tamuni, escideol, estudios, sitlab, participacion)
             
-            # Hacer la predicción
             with st.spinner('Realizando predicción...'):
                 try:
                     prediccion = predict_model(modelo, data=nuevo_dato)
                     
-                    # Mostrar resultado
                     st.success("✅ Predicción completada")
                     
-                    # Crear tres columnas para el resultado
                     res_col1, res_col2, res_col3 = st.columns([1, 2, 1])
                     
                     with res_col2:
@@ -230,10 +290,8 @@ if modelo is not None:
                         voto_predicho = prediccion['prediction_label'].values[0]
                         probabilidad = prediccion['prediction_score'].values[0]
                         
-                    # Obtener el color del partido
                     color_partido = COLORES_PARTIDOS.get(voto_predicho, '#1f77b4')
                     
-                    # Mostrar el partido predicho con estilo y color corporativo
                     st.markdown(f"""
                     <div style='text-align: center; padding: 20px; background-color: #1E1E1E; border-radius: 10px;'>
                         <h2 style='color: {color_partido}; margin: 0;'>{voto_predicho}</h2>
@@ -243,7 +301,6 @@ if modelo is not None:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Mostrar barra de probabilidad con color del partido
                     st.markdown(f"""
                     <style>
                         .stProgress > div > div > div > div {{
@@ -253,7 +310,6 @@ if modelo is not None:
                     """, unsafe_allow_html=True)
                     st.progress(probabilidad)
                     
-                    # Información adicional
                     st.markdown("---")
                     st.info("""
                     **💡 Interpretación:**
@@ -263,26 +319,8 @@ if modelo is not None:
                     - Probabilidad > 70%: Predicción con alta confianza
                     """)
                     
-                    # Mostrar todas las probabilidades (si están disponibles)
-                    if len([col for col in prediccion.columns if col.startswith('prediction_score')]) > 1:
-                        st.markdown("### 📊 Probabilidades por partido")
-                        
-                        # Extraer todas las columnas de score
-                        score_cols = [col for col in prediccion.columns if col.startswith('prediction_score')]
-                        if score_cols:
-                            scores_df = prediccion[score_cols].T
-                            scores_df.columns = ['Probabilidad']
-                            scores_df.index = [col.replace('prediction_score_', '') for col in score_cols]
-                            scores_df = scores_df.sort_values('Probabilidad', ascending=False)
-                            
-                            st.dataframe(
-                                scores_df.style.format({'Probabilidad': '{:.1%}'}),
-                                use_container_width=True
-                            )
-                    
                 except Exception as e:
                     st.error(f"❌ Error al realizar la predicción: {e}")
-                    st.info("💡 Verifica que el modelo esté correctamente entrenado y guardado")
     
     # ============================================================================
     # PESTAÑA 2: ANÁLISIS DE PROBABILIDADES
@@ -291,7 +329,6 @@ if modelo is not None:
         st.subheader("📊 Análisis de Probabilidades por Variable")
         st.markdown("Analiza cómo varía la predicción al cambiar una variable específica")
         
-        # Configurar perfil base
         st.markdown("### ⚙️ Configurar Perfil Base")
         
         col1, col2, col3 = st.columns(3)
@@ -300,7 +337,7 @@ if modelo is not None:
                 ['18-29', '30-39', '40-49', '50-59', '60-69', '70+'],
                 index=1, key="base_grupo_edad")
             base_sexo = st.selectbox("Sexo base", ["Hombre", "Mujer"], key="base_sexo")
-            base_ccaa = st.selectbox("CCAA base", ccaa_options, index=12, key="base_ccaa")  # Madrid por defecto
+            base_ccaa = st.selectbox("CCAA base", ccaa_options, index=12, key="base_ccaa")
         
         with col2:
             base_estudios = st.selectbox("Estudios base", 
@@ -316,7 +353,6 @@ if modelo is not None:
                 index=2, key="base_tamuni")
             base_participacion = st.selectbox("Participación base", ["Sí", "No"], key="base_participacion")
         
-        # Seleccionar variable a analizar
         st.markdown("### 🔍 Variable a Analizar")
         variable_analizar = st.selectbox(
             "Selecciona la variable para ver cómo afecta la predicción:",
@@ -384,7 +420,7 @@ if modelo is not None:
                             })
                     
                     elif variable_analizar == "CCAA":
-                        for ccaa_temp in ccaa_options[:10]:  # Primeras 10 para no saturar
+                        for ccaa_temp in ccaa_options[:10]:
                             df_temp = crear_dataframe_prediccion(
                                 base_grupo_edad, base_sexo, ccaa_temp, base_tamuni, 
                                 5, base_estudios, base_sitlab, base_participacion
@@ -396,10 +432,8 @@ if modelo is not None:
                                 'Probabilidad': pred['prediction_score'].values[0]
                             })
                     
-                    # Crear DataFrame de resultados
                     df_resultados = pd.DataFrame(resultados)
                     
-                    # Gráfico con colores de partidos
                     fig = px.bar(df_resultados, x='Variable', y='Probabilidad', color='Partido',
                                 title=f'Predicción según {variable_analizar}',
                                 labels={'Variable': variable_analizar, 'Probabilidad': 'Probabilidad (%)'},
@@ -411,7 +445,6 @@ if modelo is not None:
                     
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    # Tabla de resultados
                     st.markdown("### 📋 Resultados Detallados")
                     st.dataframe(
                         df_resultados.style.format({'Probabilidad': '{:.1%}'}),
@@ -420,97 +453,6 @@ if modelo is not None:
                     
                 except Exception as e:
                     st.error(f"❌ Error al generar análisis: {e}")
-    
-    # ============================================================================
-    # PESTAÑA 3: COMPARAR PERFILES
-    # ============================================================================
-    with tab3:
-        st.subheader("⚖️ Comparar Múltiples Perfiles")
-        st.markdown("Compara las predicciones para diferentes perfiles de votantes")
-        
-        num_perfiles = st.slider("¿Cuántos perfiles quieres comparar?", min_value=2, max_value=5, value=2)
-        
-        perfiles = []
-        cols = st.columns(num_perfiles)
-        
-        for i, col in enumerate(cols):
-            with col:
-                st.markdown(f"### Perfil {i+1}")
-                perfil = {
-                    'nombre': st.text_input(f"Nombre", value=f"Perfil {i+1}", key=f"nombre_{i}"),
-                    'grupo_edad': st.selectbox("Grupo de edad", 
-                        ['18-29', '30-39', '40-49', '50-59', '60-69', '70+'],
-                        index=1, key=f"grupo_edad_comp_{i}"),
-                    'sexo': st.radio("Sexo", ["Hombre", "Mujer"], key=f"sexo_comp_{i}"),
-                    'ccaa': st.selectbox("CCAA", ccaa_options, key=f"ccaa_comp_{i}"),
-                    'escideol': st.slider("Ideología", 1, 10, 5, key=f"ideol_comp_{i}"),
-                    'estudios': st.selectbox("Estudios", 
-                        ['Sin estudios o primaria', 'Secundaria', 'Formación Profesional', 'Superiores'],
-                        key=f"est_comp_{i}"),
-                    'sitlab': st.selectbox("Situación", 
-                        ['Trabaja', 'En paro', 'Pensionista', 'Otra situación'],
-                        key=f"sit_comp_{i}"),
-                    'tamuni': st.selectbox("Municipio",
-                        ['0-10.000', '10.001-100.000', '>100.000'],
-                        key=f"tam_comp_{i}"),
-                    'participacion': st.radio("Participó", ["Sí", "No"], key=f"part_comp_{i}")
-                }
-                perfiles.append(perfil)
-        
-        st.markdown("---")
-        
-        if st.button("⚖️ Comparar Perfiles", type="primary", use_container_width=True):
-            with st.spinner("Comparando perfiles..."):
-                try:
-                    comparacion = []
-                    
-                    for perfil in perfiles:
-                        df_temp = crear_dataframe_prediccion(
-                            perfil['grupo_edad'], perfil['sexo'], perfil['ccaa'], perfil['tamuni'],
-                            perfil['escideol'], perfil['estudios'], perfil['sitlab'], perfil['participacion']
-                        )
-                        pred = predict_model(modelo, data=df_temp)
-                        
-                        comparacion.append({
-                            'Perfil': perfil['nombre'],
-                            'Voto Predicho': pred['prediction_label'].values[0],
-                            'Probabilidad': pred['prediction_score'].values[0],
-                            'Grupo de Edad': perfil['grupo_edad'],
-                            'Ideología': perfil['escideol'],
-                            'CCAA': perfil['ccaa']
-                        })
-                    
-                    df_comp = pd.DataFrame(comparacion)
-                    
-                    # Gráfico de barras con colores de partidos
-                    fig = px.bar(df_comp, x='Perfil', y='Probabilidad', color='Voto Predicho',
-                                title='Comparación de Predicciones',
-                                text='Probabilidad',
-                                color_discrete_map=COLORES_PARTIDOS)
-                    fig.update_traces(texttemplate='%{text:.1%}', textposition='outside')
-                    fig.update_layout(height=400)
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Tabla comparativa
-                    st.markdown("### 📊 Tabla Comparativa")
-                    st.dataframe(
-                        df_comp.style.format({'Probabilidad': '{:.1%}'}),
-                        use_container_width=True
-                    )
-                    
-                    # Resumen
-                    st.markdown("### 📝 Resumen")
-                    partidos_unicos = df_comp['Voto Predicho'].unique()
-                    st.write(f"**Partidos predichos:** {', '.join(partidos_unicos)}")
-                    
-                    if len(partidos_unicos) == 1:
-                        st.success(f"✅ Todos los perfiles predicen voto a: **{partidos_unicos[0]}**")
-                    else:
-                        st.info("🔄 Los perfiles muestran predicciones diferentes")
-                    
-                except Exception as e:
-                    st.error(f"❌ Error al comparar perfiles: {e}")
 
     # Sección de información
     st.markdown("---")
@@ -531,7 +473,7 @@ if modelo is not None:
         
         **Datos de entrenamiento:**
         - ~44.000 encuestas del CIS (11 meses de 2025)
-        - Partidos predichos: PSOE, PP, VOX, Sumar, y otros
+        - Partidos predichos: PSOE, PP, VOX, Sumar
         
         **Limitaciones:**
         - El modelo refleja patrones históricos, no necesariamente comportamientos futuros
@@ -543,7 +485,7 @@ else:
     st.error("❌ No se pudo cargar el modelo. Verifica que el archivo 'models/modelo_prediccion_voto.pkl' exista.")
     st.info("""
     **Para usar esta aplicación:**
-    1. Ejecuta el notebook 'limpiacsvs.ipynb' completamente
+    1. Ejecuta el notebook 'predictorvoto.ipynb' completamente
     2. Asegúrate de que el modelo se haya guardado en 'models/modelo_prediccion_voto.pkl'
     3. Recarga esta página
     """)
